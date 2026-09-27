@@ -1,14 +1,356 @@
-import React,{useEffect,useMemo,useState} from 'react';import{createRoot}from'react-dom/client';import{api,supabase}from'./supabase';import'./styles.css';
+import React,{useEffect,useMemo,useState} from 'react';
+import{createRoot}from'react-dom/client';
+import{api,supabase}from'./supabase';
+import'./styles.css';
+
 const tabs=[['home','Inicio'],['members','Miembros'],['restaurants','Restaurantes'],['vote','Votar'],['votes','Votaciones']];
-function App(){const[tab,setTab]=useState('home'),[restaurants,setRestaurants]=useState([]),[members,setMembers]=useState([]),[votes,setVotes]=useState([]),[err,setErr]=useState(''),[live,setLive]=useState('Conectando…');
- const load=async()=>{try{setErr('');const[r,m,v]=await Promise.all([api.restaurants.all(),api.members.all(),api.votes.all()]);setRestaurants(r);setMembers(m);setVotes(v)}catch(e){setErr(e.message)}};
- useEffect(()=>{load();const ch=supabase.channel('cerdanyam-live').on('postgres_changes',{event:'*',schema:'public',table:'restaurants'},load).on('postgres_changes',{event:'*',schema:'public',table:'members'},load).on('postgres_changes',{event:'*',schema:'public',table:'votes'},load).subscribe(s=>setLive(s==='SUBSCRIBED'?'Actualización en tiempo real activa':s));return()=>supabase.removeChannel(ch)},[]);
- const props={restaurants,members,votes,load,setTab,setErr};return <div className="app"><header className="top"><div className="brand"><img src="/logo.png"/>Cerdanyam</div></header><main className="main">{err&&<div className="error">{err}</div>}{tab==='home'&&<Home setTab={setTab}/>} {tab==='members'&&<Members {...props}/>} {tab==='restaurants'&&<Restaurants {...props}/>} {tab==='vote'&&<Vote {...props}/>} {tab==='votes'&&<Votes {...props}/>}<div className="status">{live}</div></main><nav className="bottom">{tabs.map(([id,label])=><button key={id} className={'nav '+(tab===id?'active':'')} onClick={()=>setTab(id)}>{label}</button>)}</nav></div>}
-function Home({setTab}){return <><div className="hero"><img src="/logo.png"/><h1>Cerdanyam</h1></div><div className="grid"><button className="tile purple" onClick={()=>setTab('members')}>Miembros</button><button className="tile orange" onClick={()=>setTab('restaurants')}>Restaurantes</button><button className="tile green" onClick={()=>setTab('vote')}>Votar</button><button className="tile blue" onClick={()=>setTab('votes')}>Votaciones</button></div></>}
-function Members({members,votes,load,setErr}){const[alias,setAlias]=useState('');const add=async()=>{if(!alias.trim())return;try{await api.members.create({alias:alias.trim()});setAlias('');load()}catch(e){setErr(e.message)}};return <><Head title="Miembros"/><div className="card"><input className="field" value={alias} onChange={e=>setAlias(e.target.value)} placeholder="Nuevo alias"/><button className="primary" onClick={add}>Agregar miembro</button></div>{members.map(m=><div className="card" key={m.id}><div className="row"><b>{m.alias}</b><span className="muted">{votes.filter(v=>v.voter_alias===m.alias).length} votos</span></div></div>)}</>}
-function Restaurants({restaurants,votes,load,setErr}){const[name,setName]=useState(''),[population,setPopulation]=useState('');const ranked=useMemo(()=>restaurants.map(r=>{const rv=votes.filter(v=>v.restaurant_id===r.id);const vals=rv.flatMap(v=>[v.food_rating,v.environment_rating,v.price_quality_rating,v.kindness_rating]).filter(Number.isFinite);return{...r,count:rv.length,avg:vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0}}).sort((a,b)=>b.avg-a.avg),[restaurants,votes]);const add=async()=>{if(!name.trim())return;try{await api.restaurants.create({name:name.trim(),population:population.trim()||'All'});setName('');setPopulation('');load()}catch(e){setErr(e.message)}};return <><Head title="Restaurantes"/><div className="card"><input className="field" value={name} onChange={e=>setName(e.target.value)} placeholder="Nombre"/><input className="field" value={population} onChange={e=>setPopulation(e.target.value)} placeholder="Población"/><button className="primary" onClick={add}>Agregar restaurante</button></div>{ranked.map((r,i)=><div className="card" key={r.id}><div className="row"><div><b>{i+1}. {r.name}</b><div className="muted">{r.population} · {r.count} votaciones</div></div><div className="score">{r.avg?r.avg.toFixed(2):'—'}</div></div></div>)}</>}
-function Vote({restaurants,members,load,setErr}){const[restaurant,setRestaurant]=useState(''),[alias,setAlias]=useState(()=>localStorage.getItem('currentUser')||''),[date,setDate]=useState(()=>new Date().toISOString().slice(0,10)),[ratings,setRatings]=useState({food_rating:0,environment_rating:0,price_quality_rating:0,kindness_rating:0}),[comments,setComments]=useState(''),[ok,setOk]=useState(false);const submit=async()=>{if(!restaurant||!alias||Object.values(ratings).some(x=>!x))return;try{await api.votes.create({restaurant_id:restaurant,voter_alias:alias,...ratings,voting_date:date,comments:comments.trim()||null});localStorage.setItem('currentUser',alias);setOk(true);setComments('');setRatings({food_rating:0,environment_rating:0,price_quality_rating:0,kindness_rating:0});load();setTimeout(()=>setOk(false),2500)}catch(e){setErr(e.message)}};return <><Head title="Votar"/>{ok&&<div className="ok">Votación guardada.</div>}<div className="card"><label>Restaurante</label><select className="field" value={restaurant} onChange={e=>setRestaurant(e.target.value)}><option value="">Selecciona…</option>{[...restaurants].sort((a,b)=>a.name.localeCompare(b.name)).map(r=><option key={r.id} value={r.id}>{r.name} — {r.population}</option>)}</select><label>Miembro</label><select className="field" value={alias} onChange={e=>setAlias(e.target.value)}><option value="">Selecciona…</option>{[...members].sort((a,b)=>a.alias.localeCompare(b.alias)).map(m=><option key={m.id}>{m.alias}</option>)}</select><label>Fecha</label><input type="date" className="field" value={date} onChange={e=>setDate(e.target.value)}/>{[['food_rating','Comida'],['environment_rating','Entorno'],['price_quality_rating','Calidad / precio'],['kindness_rating','Amabilidad']].map(([k,l])=><Rating key={k} label={l} value={ratings[k]} setValue={v=>setRatings(x=>({...x,[k]:v}))}/>)}<label>Comentarios</label><textarea className="field" rows="3" value={comments} onChange={e=>setComments(e.target.value)}/><button className="primary" onClick={submit}>Enviar votación</button></div></>}
-function Rating({label,value,setValue}){return <><label>{label}</label><div className="stars">{[1,2,3,4,5].map(n=><button type="button" key={n} className={'star '+(n<=value?'on':'')} onClick={()=>setValue(n)}>★</button>)}</div></>}
-function Votes({votes}){return <><Head title="Votaciones"/>{votes.map(v=><div className="card" key={v.id}><div className="row"><b>{v.restaurant?.name||'Restaurante'}</b><span className="muted">{v.voting_date}</span></div><div className="muted">{v.voter_alias}</div><div>Comida {v.food_rating}/5 · Entorno {v.environment_rating}/5 · Calidad/precio {v.price_quality_rating}/5 · Amabilidad {v.kindness_rating}/5</div>{v.comments&&<p>{v.comments}</p>}</div>)}</>}
-function Head({title}){return <div className="section-head"><h1>{title}</h1></div>}
+
+function App(){
+ const[tab,setTab]=useState('home'),[restaurants,setRestaurants]=useState([]),[members,setMembers]=useState([]),[votes,setVotes]=useState([]),[err,setErr]=useState(''),[live,setLive]=useState('Conectando…');
+
+ const load=async()=>{
+  try{
+   setErr('');
+   const[r,m,v]=await Promise.all([api.restaurants.all(),api.members.all(),api.votes.all()]);
+   setRestaurants(r);
+   setMembers(m);
+   setVotes(v)
+  }catch(e){setErr(e.message)}
+ };
+
+ useEffect(()=>{
+  load();
+  const ch=supabase.channel('cerdanyam-live')
+   .on('postgres_changes',{event:'*',schema:'public',table:'restaurants'},load)
+   .on('postgres_changes',{event:'*',schema:'public',table:'members'},load)
+   .on('postgres_changes',{event:'*',schema:'public',table:'votes'},load)
+   .subscribe(s=>setLive(s==='SUBSCRIBED'?'Actualización en tiempo real activa':s));
+  return()=>supabase.removeChannel(ch)
+ },[]);
+
+ const props={restaurants,members,votes,load,setTab,setErr};
+
+ return <div className="app">
+  <header className="top">
+   <div className="brand">
+    <img src={`${import.meta.env.BASE_URL}logo.png`}/>
+    Cerdanyam
+   </div>
+  </header>
+
+  <main className="main">
+   {err&&<div className="error">{err}</div>}
+   {tab==='home'&&<Home setTab={setTab}/>}
+   {tab==='members'&&<Members {...props}/>}
+   {tab==='restaurants'&&<Restaurants {...props}/>}
+   {tab==='vote'&&<Vote {...props}/>}
+   {tab==='votes'&&<Votes {...props}/>}
+   <div className="status">{live}</div>
+  </main>
+
+  <nav className="bottom">
+   {tabs.map(([id,label])=>
+    <button
+     key={id}
+     className={'nav '+(tab===id?'active':'')}
+     onClick={()=>setTab(id)}
+    >
+     {label}
+    </button>
+   )}
+  </nav>
+ </div>
+}
+
+function Home({setTab}){
+ return <>
+  <div className="hero">
+   <img src={`${import.meta.env.BASE_URL}logo.png`}/>
+   <h1>Cerdanyam</h1>
+  </div>
+
+  <div className="grid">
+   <button className="tile purple" onClick={()=>setTab('members')}>Miembros</button>
+   <button className="tile orange" onClick={()=>setTab('restaurants')}>Restaurantes</button>
+   <button className="tile green" onClick={()=>setTab('vote')}>Votar</button>
+   <button className="tile blue" onClick={()=>setTab('votes')}>Votaciones</button>
+  </div>
+ </>
+}
+
+function Members({members,votes,load,setErr}){
+ const[alias,setAlias]=useState('');
+
+ const add=async()=>{
+  if(!alias.trim())return;
+  try{
+   await api.members.create({alias:alias.trim()});
+   setAlias('');
+   load()
+  }catch(e){setErr(e.message)}
+ };
+
+ return <>
+  <Head title="Miembros"/>
+
+  <div className="card">
+   <input
+    className="field"
+    value={alias}
+    onChange={e=>setAlias(e.target.value)}
+    placeholder="Nuevo alias"
+   />
+   <button className="primary" onClick={add}>Agregar miembro</button>
+  </div>
+
+  {members.map(m=>
+   <div className="card" key={m.id}>
+    <div className="row">
+     <b>{m.alias}</b>
+     <span className="muted">
+      {votes.filter(v=>v.voter_alias===m.alias).length} votos
+     </span>
+    </div>
+   </div>
+  )}
+ </>
+}
+
+function Restaurants({restaurants,votes,load,setErr}){
+ const[name,setName]=useState(''),[population,setPopulation]=useState('');
+
+ const ranked=useMemo(()=>
+  restaurants.map(r=>{
+   const rv=votes.filter(v=>v.restaurant_id===r.id);
+   const vals=rv
+    .flatMap(v=>[
+     v.food_rating,
+     v.environment_rating,
+     v.price_quality_rating,
+     v.kindness_rating
+    ])
+    .filter(Number.isFinite);
+
+   return{
+    ...r,
+    count:rv.length,
+    avg:vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:0
+   }
+  }).sort((a,b)=>b.avg-a.avg)
+ ,[restaurants,votes]);
+
+ const add=async()=>{
+  if(!name.trim())return;
+  try{
+   await api.restaurants.create({
+    name:name.trim(),
+    population:population.trim()||'All'
+   });
+   setName('');
+   setPopulation('');
+   load()
+  }catch(e){setErr(e.message)}
+ };
+
+ return <>
+  <Head title="Restaurantes"/>
+
+  <div className="card">
+   <input
+    className="field"
+    value={name}
+    onChange={e=>setName(e.target.value)}
+    placeholder="Nombre"
+   />
+   <input
+    className="field"
+    value={population}
+    onChange={e=>setPopulation(e.target.value)}
+    placeholder="Población"
+   />
+   <button className="primary" onClick={add}>Agregar restaurante</button>
+  </div>
+
+  {ranked.map((r,i)=>
+   <div className="card" key={r.id}>
+    <div className="row">
+     <div>
+      <b>{i+1}. {r.name}</b>
+      <div className="muted">
+       {r.population} · {r.count} votaciones
+      </div>
+     </div>
+     <div className="score">
+      {r.avg?r.avg.toFixed(2):'—'}
+     </div>
+    </div>
+   </div>
+  )}
+ </>
+}
+
+function Vote({restaurants,members,load,setErr}){
+ const[restaurant,setRestaurant]=useState(''),
+ [alias,setAlias]=useState(()=>localStorage.getItem('currentUser')||''),
+ [date,setDate]=useState(()=>new Date().toISOString().slice(0,10)),
+ [ratings,setRatings]=useState({
+  food_rating:0,
+  environment_rating:0,
+  price_quality_rating:0,
+  kindness_rating:0
+ }),
+ [comments,setComments]=useState(''),
+ [ok,setOk]=useState(false);
+
+ const submit=async()=>{
+  if(!restaurant||!alias||Object.values(ratings).some(x=>!x))return;
+
+  try{
+   await api.votes.create({
+    restaurant_id:restaurant,
+    voter_alias:alias,
+    ...ratings,
+    voting_date:date,
+    comments:comments.trim()||null
+   });
+
+   localStorage.setItem('currentUser',alias);
+   setOk(true);
+   setComments('');
+   setRatings({
+    food_rating:0,
+    environment_rating:0,
+    price_quality_rating:0,
+    kindness_rating:0
+   });
+   load();
+   setTimeout(()=>setOk(false),2500)
+  }catch(e){setErr(e.message)}
+ };
+
+ return <>
+  <Head title="Votar"/>
+
+  {ok&&<div className="ok">Votación guardada.</div>}
+
+  <div className="card">
+   <label>Restaurante</label>
+
+   <select
+    className="field"
+    value={restaurant}
+    onChange={e=>setRestaurant(e.target.value)}
+   >
+    <option value="">Selecciona…</option>
+    {[...restaurants]
+     .sort((a,b)=>a.name.localeCompare(b.name))
+     .map(r=>
+      <option key={r.id} value={r.id}>
+       {r.name} — {r.population}
+      </option>
+     )}
+   </select>
+
+   <label>Miembro</label>
+
+   <select
+    className="field"
+    value={alias}
+    onChange={e=>setAlias(e.target.value)}
+   >
+    <option value="">Selecciona…</option>
+    {[...members]
+     .sort((a,b)=>a.alias.localeCompare(b.alias))
+     .map(m=>
+      <option key={m.id}>{m.alias}</option>
+     )}
+   </select>
+
+   <label>Fecha</label>
+
+   <input
+    type="date"
+    className="field"
+    value={date}
+    onChange={e=>setDate(e.target.value)}
+   />
+
+   {[
+    ['food_rating','Comida'],
+    ['environment_rating','Entorno'],
+    ['price_quality_rating','Calidad / precio'],
+    ['kindness_rating','Amabilidad']
+   ].map(([k,l])=>
+    <Rating
+     key={k}
+     label={l}
+     value={ratings[k]}
+     setValue={v=>setRatings(x=>({...x,[k]:v}))}
+    />
+   )}
+
+   <label>Comentarios</label>
+
+   <textarea
+    className="field"
+    rows="3"
+    value={comments}
+    onChange={e=>setComments(e.target.value)}
+   />
+
+   <button className="primary" onClick={submit}>
+    Enviar votación
+   </button>
+  </div>
+ </>
+}
+
+function Rating({label,value,setValue}){
+ return <>
+  <label>{label}</label>
+  <div className="stars">
+   {[1,2,3,4,5].map(n=>
+    <button
+     type="button"
+     key={n}
+     className={'star '+(n<=value?'on':'')}
+     onClick={()=>setValue(n)}
+    >
+     ★
+    </button>
+   )}
+  </div>
+ </>
+}
+
+function Votes({votes}){
+ return <>
+  <Head title="Votaciones"/>
+
+  {votes.map(v=>
+   <div className="card" key={v.id}>
+    <div className="row">
+     <b>{v.restaurant?.name||'Restaurante'}</b>
+     <span className="muted">{v.voting_date}</span>
+    </div>
+
+    <div className="muted">{v.voter_alias}</div>
+
+    <div>
+     Comida {v.food_rating}/5 · Entorno {v.environment_rating}/5 ·
+     Calidad/precio {v.price_quality_rating}/5 · Amabilidad {v.kindness_rating}/5
+    </div>
+
+    {v.comments&&<p>{v.comments}</p>}
+   </div>
+  )}
+ </>
+}
+
+function Head({title}){
+ return <div className="section-head">
+  <h1>{title}</h1>
+ </div>
+}
+
 createRoot(document.getElementById('root')).render(<App/>);
