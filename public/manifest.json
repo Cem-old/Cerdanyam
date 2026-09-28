@@ -2,24 +2,25 @@
   "name": "Cerdanyam",
   "short_name": "Cerdanyam",
   "description": "App para votar y clasificar restaurantes",
+  "id": "/Cerdanyam/",
   "start_url": "/Cerdanyam/",
   "scope": "/Cerdanyam/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#ffffff",
   "theme_color": "#ea580c",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/Cerdanyam/logo.png",
+      "src": "/Cerdanyam/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/Cerdanyam/logo.png",
+      "src": "/Cerdanyam/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

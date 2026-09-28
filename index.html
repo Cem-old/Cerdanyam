@@ -1,20 +1,51 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#ea580c">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Cerdanyam">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
-  <link rel="manifest" href="/Cerdanyam/manifest.json">
-  <link rel="apple-touch-icon" href="/Cerdanyam/logo.png">
-  <link rel="icon" href="/Cerdanyam/logo.png">
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Cerdanyam" />
 
-  <title>Cerdanyam</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
+    <!-- Hide Safari UI -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+
+    <!-- iOS Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="%BASE_URL%logo.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="%BASE_URL%logo.png" />
+
+    <!-- Standard favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%logo.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="%BASE_URL%logo.png" />
+    <link rel="shortcut icon" href="%BASE_URL%logo.png" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="%BASE_URL%manifest.json" />
+
+    <!-- Theme color -->
+    <meta name="theme-color" content="#ea580c" />
+    <meta name="msapplication-TileColor" content="#ea580c" />
+
+    <title>Cerdanyam</title>
+    <script type="module" crossorigin src="/src/main.jsx"></script>
+  <script>
+      // Pages serves physical route directories with a trailing slash.
+      if (/\/(data|ranking|vote|votes)\/$/.test(location.pathname)) {
+        history.replaceState(history.state, '', location.pathname.slice(0, -1) + location.search + location.hash);
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
 </html>

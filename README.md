@@ -1,34 +1,24 @@
-# Cerdanyam — reconstrucción independiente de Bolt
+# Cerdanyam recuperado
 
-Esta carpeta contiene una reconstrucción editable de la app recuperada de Netlify y una copia de seguridad de los CSV originales.
+Aplicación original recuperada de los archivos de Netlify y adaptada a GitHub Pages en `/Cerdanyam/`. Conserva sus componentes, estilos y operaciones de Supabase. Ver [RECUPERACION.md](RECUPERACION.md) para la comparación y pruebas.
 
-## Qué conserva
-- Tablas Supabase: `members`, `restaurants`, `votes`.
-- Alta de miembros y restaurantes.
-- Votación por restaurante/miembro con 4 notas, fecha y comentarios.
-- Ranking por media de las cuatro notas.
-- PWA para móvil/iPhone.
-- Actualización automática mediante Supabase Realtime.
+## Publicación
 
-## Puesta en marcha local
-1. Instalar Node.js 20+.
-2. Copiar `.env.example` a `.env`.
-3. Rellenar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` con los datos públicos del proyecto Supabase.
-4. Ejecutar `npm install` y después `npm run dev`.
-5. Para producción: `npm run build`; Netlify publica la carpeta `dist`.
+El workflow existente `.github/workflows/deploy-pages.yml` compila y publica al actualizar `main`. Conserva los secretos existentes `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`; no hace falta cambiarlos. La clave debe ser pública (`anon` o `publishable`), nunca una clave de administración.
 
-## Realtime
-En Supabase > SQL Editor, ejecutar `supabase/enable_realtime.sql` una sola vez. Si Realtime ya está habilitado para esas tablas, no hace falta.
+El código fuente entregado no incluye credenciales. No contiene los CSV de datos, ni ejecuta migraciones o cambios en Supabase. No se debe ejecutar ningún SQL para esta recuperación.
 
-## Keep-alive gratuito
-El workflow `.github/workflows/keep-supabase-awake.yml` hace una lectura de un único ID cada 6 horas. Para usarlo, subir el proyecto a GitHub y crear dos Repository secrets:
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+## Trabajo local
 
-La consulta es solo lectura; no modifica ningún registro. GitHub puede retrasar tareas cron, por lo que no es una garantía contractual de disponibilidad. Si se necesita garantía, usar un plan de Supabase que no pause proyectos.
+1. Instalar Node.js 22 LTS y ejecutar `npm install`.
+2. Copiar `.env.example` a `.env.local` y configurar la conexión pública del proyecto existente.
+3. Ejecutar `npm run dev` y abrir la dirección indicada, bajo `/Cerdanyam/`.
+4. `npm run build` genera `dist/`; `npm run preview` permite revisarlo.
 
-## Seguridad
-La app original identifica a la persona por alias/localStorage y no usa Supabase Auth. Esta reconstrucción mantiene esa simplicidad. Antes de abrir la app a usuarios no confiables, revisar RLS y autenticación.
+La publicación genera entradas físicas para `/data/`, `/ranking/`, `/vote/` y `/votes/`, además de la portada. GitHub Pages no necesita las reglas `_redirects` de Netlify.
 
-## Copia original
-`backup_original/` contiene los tres CSV exportados y, si está disponible, el ZIP del deploy recuperado de Netlify.
+## Origen del código
+
+`src/recovered.js` conserva el JavaScript compilado original, con adaptaciones pequeñas documentadas. No se dispone de los componentes JSX originales ni de sus mapas de código fuente. `src/main.jsx` lo carga junto con el CSS original. `src/supabase.js` se conserva como referencia de la reconstrucción anterior, pero no es la conexión utilizada por la aplicación recuperada.
+
+Las notificaciones conservan la consulta periódica original cada 30 segundos. Se mantienen los nombres de tablas y campos, así como las preferencias guardadas en localStorage. No se ha añadido un modo sin conexión: los archivos originales no incluían un service worker.
